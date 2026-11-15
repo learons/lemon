@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>8月成交与逾期看板</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+    body { background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+    .dashboard { max-width: 1400px; width: 100%; background: #fff; border-radius: 24px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,.05); }
+    .header { font-size: 24px; font-weight: 600; margin-bottom: 20px; border-left: 5px solid #3b82f6; padding-left: 15px; }
+    .kpi-row { display: flex; gap: 20px; margin-bottom: 20px; }
+    .kpi { flex: 1; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .kpi-title { font-size: 13px; color: #64748b; }
+    .kpi-value { font-size: 24px; font-weight: bold; color: #0f172a; margin-top: 5px; }
+    #mapChart { width: 100%; height: 600px; border: 1px solid #eef2f6; border-radius: 12px; }
+    .tip { font-size: 13px; color: #64748b; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+  <div class="header">8月成交与逾期看板</div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-title">总成交额</div><div class="kpi-value">¥ 18.23M</div></div>
+    <div class="kpi"><div class="kpi-title">总逾期金额</div><div class="kpi-value">¥ 1.32M</div></div>
+    <div class="kpi"><div class="kpi-title">整体逾期率</div><div class="kpi-value">7.24%</div></div>
+  </div>
+  <div id="mapChart"></div>
+  <div class="tip">* 气泡大小代表逾期金额，颜色越深逾期率越高。如果地图未显示，请稍等几秒或刷新页面。</div>
+</div>
+
+<script>
+  const chart = echarts.init(document.getElementById('mapChart'));
+  
+  // 稳定可用的阿里云中国地图 GeoJSON
+  fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+    .then(res => res.json())
+    .then(geoJson => {
+      echarts.registerMap('china', geoJson);
+      
+      const cityCoord = {
+        '上海': [121.47, 31.23], '广州': [113.26, 23.12], '杭州': [120.15, 30.27],
+        '南京': [118.79, 32.06], '合肥': [117.22, 31.82], '武汉': [114.30, 30.59],
+        '北京': [116.40, 39.90], '深圳': [114.05, 22.54], '成都': [104.06, 30.57],
+        '西安': [108.93, 34.34], '天津': [117.20, 39.08], '重庆': [106.55, 29.56], '苏州': [120.58, 31.29]
+      };
+
+      const data = [
+        { city: '上海', v: 4184808, o: 41907 }, { city: '广州', v: 5101064, o: 174287 },
+        { city: '杭州', v: 2923343, o: 107472 }, { city: '南京', v: 1878144, o: 45716 },
+        { city: '合肥', v: 1786234, o: 97087 }, { city: '武汉', v: 1996734, o: 42389 },
+        { city: '北京', v: 1832451, o: 52638 }, { city: '深圳', v: 1576406, o: 47793 },
+        { city: '成都', v: 1446978, o: 25685 }, { city: '西安', v: 1367234, o: 84065 },
+        { city: '天津', v: 1024586, o: 25801 }, { city: '重庆', v: 909129, o: 30063 },
+        { city: '苏州', v: 2916777, o: 126510 }
+      ];
+
+      const maxO = Math.max(...data.map(d => d.o));
+      const seriesData = data.map(d => {
+        const rate = (d.o / d.v) * 100;
+        const size = 12 + (Math.sqrt(d.o / maxO) * 66);
+        let color = '#c53030';
+        if (rate < 2) color = '#ff9f9f';
+        else if (rate < 3) color = '#f97373';
+        
+        return {
+          name: d.city,
+          value: [...cityCoord[d.city], d.o],
+          rate: rate,
+          overdue: d.o,
+          vol: d.v,
+          symbolSize: size,
+          itemStyle: { color: color, borderColor: '#fff', borderWidth: 1 }
+        };
+      });
+
+      chart.setOption({
+        tooltip: {
+          trigger: 'item',
+          formatter: p => `<b>${p.data.name}</b><br/>逾期率: ${p.data.rate.toFixed(2)}%<br/>逾期金额: ¥${p.data.overdue.toLocaleString()}<br/>成交额: ¥${p.data.vol.toLocaleString()}`
+        },
+        geo: {
+          map: 'china', roam: true, zoom: 1.2, center: [104.5, 34.5],
+          itemStyle: { areaColor: '#f2f6fc', borderColor: '#cbd5e1' }
+        },
+        series: [{
+          type: 'scatter', coordinateSystem: 'geo', data: seriesData,
+          label: { show: true, position: 'right', formatter: p => `${p.data.name} ${p.data.rate.toFixed(1)}%`, fontSize: 11, color: '#1e293b', backgroundColor: 'rgba(255,255,255,0.8)', padding: [2,4], borderRadius: 2 }
+        }]
+      });
+    });
+    
+  window.addEventListener('resize', () => chart.resize());
+</script>
+</body>
+</html>
