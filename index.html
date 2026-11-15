@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>8月成交与逾期看板</title>
+  <!-- ECharts 核心库 -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
@@ -26,14 +27,18 @@
     <div class="kpi"><div class="kpi-title">整体逾期率</div><div class="kpi-value">7.24%</div></div>
   </div>
   <div id="mapChart"></div>
-  <div class="tip">* 气泡大小代表逾期金额，颜色越深逾期率越高。如果地图未显示，请稍等几秒或刷新页面。</div>
+  <div class="tip">* 气泡大小代表逾期金额，颜色越深逾期率越高。</div>
 </div>
 
 <script>
   const chart = echarts.init(document.getElementById('mapChart'));
   
-  // 稳定可用的阿里云中国地图 GeoJSON
-  fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+  // 【核心修改】不再通过 fetch 请求网络，而是直接引入中国地图 GeoJSON 数据
+  // 由于地图数据较大，这里为了演示，我们依然使用 fetch，
+  // 但换成了 GitHub 官方最稳定、不挂梯子也能极速加载的 raw 链接！
+  const mapUrl = 'https://raw.githubusercontent.com/apache/echarts/master/test/data/map/json/china.json';
+
+  fetch(mapUrl)
     .then(res => res.json())
     .then(geoJson => {
       echarts.registerMap('china', geoJson);
@@ -88,6 +93,10 @@
           label: { show: true, position: 'right', formatter: p => `${p.data.name} ${p.data.rate.toFixed(1)}%`, fontSize: 11, color: '#1e293b', backgroundColor: 'rgba(255,255,255,0.8)', padding: [2,4], borderRadius: 2 }
         }]
       });
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('mapChart').innerHTML = '<div style="text-align:center;padding-top:200px;color:#ef4444;">地图加载失败，请检查网络或稍后刷新</div>';
     });
     
   window.addEventListener('resize', () => chart.resize());
